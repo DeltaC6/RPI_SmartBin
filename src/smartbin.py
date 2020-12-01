@@ -1,3 +1,16 @@
+################################################################################
+##
+# @author   Syed Asad Amin
+# @date     Dec 1st, 2020
+# @version  v1.0.0
+# @file     smartbin.py
+#
+# @note     This is a program written in python to implement Smart Bin project.
+#           
+#           This project uses a GPS module and an ultrasonic module to get 
+#           locaiton and status of the BIN respectively.
+################################################################################
+
 import RPi.GPIO as GPIO
 import serial
 
@@ -8,9 +21,9 @@ class SmartBin:
     def __init__(self):
         print('[INFO] Initializing components.')
         # Constants
-        self.LED_PIN = 16
-        self.TRIG_PIN = 20
-        self.ECHO_PIN = 21
+        self.LED_PIN = 21
+        self.TRIG_PIN = 16
+        self.ECHO_PIN = 20
         self.SERIAL_PORT = '/dev/ttyS0'
         self.BIN_DEPTH = 90     # unit is in cm
 
@@ -65,10 +78,11 @@ class SmartBin:
             while self.isRunning:
                 # Acquiring device locaiotn and status
                 self.getLocaiton()
-                #self.getStatus()
+                self.getStatus()
                 print('[INFO] DATA: {}, {}, {}'.format(self.lat, self.lng, self.status))
 
                 # Sending data to server
+                self.uploadData()
 
                 # Delay
                 time.sleep(5.0)
@@ -111,11 +125,14 @@ class SmartBin:
                 stopTime = time.time()
 
             deltaT = stopTime - startTime
-            depth = round(deltaT * (34300 / 2.0), 2)    # Currnet depth of bin
+            depth = round(deltaT * (34300 / 2.0), 2)
             self.status = (1.0 - (depth / self.BIN_DEPTH)) * 100.0
         except Exception as e:
             print('[ERROR] Failed to acquire bin status.')
             print(e)
+
+    def uploadData(self):
+        pass
 
     def close(self):
         print('[INFO] Closing application')
@@ -123,4 +140,3 @@ class SmartBin:
         self.t.cancel()         # Closing blinker thread.
         self.ser.close()        # Closing serial.
         GPIO.cleanup()          # Closng GPIO
-

@@ -37,7 +37,7 @@ Use following command in terminal to run the application.
 
 Goto /src folder then type in terminal
 
-``` python
+``` bash
 sudo python main.py
 ```
 
@@ -47,6 +47,6 @@ sudo python main.py
 
 ## TESTING
 
-- GPS test complete
-- UltraSonic sensor test complete
-- Server communication testing complete
+- [X] GPS test complete
+- [X] UltraSonic sensor test complete
+- [ ] Server communication testing complete

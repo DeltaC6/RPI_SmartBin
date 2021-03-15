@@ -31,6 +31,25 @@ sudo pip install pyserial
 sudo pip install RPi.GPIO
 ```
 
+---
+
+### HARDWARE / CONNECTIVITY
+
+For this we need following devices as part of this application/project
+
+- [X] GPS
+- [X] Ultrasonic Sensor
+- [X] LED with 270Ohm Resistor
+
+| RPI PIN | DEVICE PIN |
+|:--------|:-----------|
+| GPIO 21 | LED |
+| GPIO 20 | ECHO |
+| GPIO 16 | TRIG |
+| GPIO 15 | GPS TX |
+| GPIO 14 | GPS RX |
+---
+
 ## USAGE
 
 Use following command in terminal to run the application.

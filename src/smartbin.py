@@ -2,8 +2,12 @@
 ##
 # @author   Syed Asad Amin
 # @date     Dec 1st, 2020
-# @version  v1.0.0
 # @file     smartbin.py
+# @version  v1.0.0
+#               | v1.0.0 -> Added the smartbin class.
+#                           Integrated the GPS and ultrasonic sensors.
+#                           Added Ubidots request functions.
+#               | v1.0.1 -> Added the API for server communication.
 #
 # @note     This is a program written in python to implement Smart Bin project.
 #           
@@ -14,19 +18,26 @@
 import RPi.GPIO as GPIO
 import serial
 
+import json
+import socket
 import time
 import threading
 
 class SmartBin:
+    HOST = 'industrial.api.ubidots.com'
+    PORT = 80
+
+    SERIAL_PORT = '/dev/ttyS0'
+    SERIAL_BAUD = 115200
+
+    LED_PIN = 21
+    TRIG_PIN = 16   // 36
+    ECHO_PIN = 20   // 38
+
+    BIN_DEPTH = 906t
+
     def __init__(self):
         print('[INFO] Initializing components.')
-        # Constants
-        self.LED_PIN = 21
-        self.TRIG_PIN = 16
-        self.ECHO_PIN = 20
-        self.SERIAL_PORT = '/dev/ttyS0'
-        self.BIN_DEPTH = 90     # unit is in cm
-
         # Variables
         self.isRunning = True
         self.ledState = False
@@ -47,7 +58,7 @@ class SmartBin:
             GPIO.setup(self.ECHO_PIN, GPIO.IN)      # ECHO as input
 
             GPIO.output(self.LED_PIN, self.ledState)
-            GPIO.output(self.TRIG_PIN, GPIO.LOW)            
+            GPIO.output(self.TRIG_PIN, GPIO.LOW)
 
             self.blink()
         except Exception as e:
@@ -58,7 +69,7 @@ class SmartBin:
 
     def InitSerial(self):
         try:
-            self.ser = serial.Serial(self.SERIAL_PORT, 115200)
+            self.ser = serial.Serial(self.SERIAL_PORT, self.SERIAL_BAUD)
         except Exception as e:
             print('[ERROR] Could not open serial.')
             print(e)
@@ -66,11 +77,15 @@ class SmartBin:
             self.isRunning = False
         
     def blink(self):
-        self.t = threading.Timer(1.0, self.blink)
-        self.t.setName('blinker')
-        self.ledState = not self.ledState
-        GPIO.output(self.LED_PIN, self.ledState)
-        self.t.start()
+        try:
+            self.t = threading.Timer(1.0, self.blink)
+            self.t.setName('blinker')
+            self.ledState = not self.ledState
+            GPIO.output(self.LED_PIN, self.ledState)
+            self.t.start()
+        except Exception as e:
+            print('[ERROR] Blinker thread error.')
+            print(e)
 
     def run(self):
         try:
@@ -85,7 +100,7 @@ class SmartBin:
                 self.uploadData()
 
                 # Delay
-                time.sleep(5.0)
+                time.sleep(10.0)
         except KeyboardInterrupt:
             print('[WARN] Force colsed application')
             self.isRunning = False
@@ -132,7 +147,63 @@ class SmartBin:
             print(e)
 
     def uploadData(self):
-        pass
+        jsonStr = self.createJson()
+        postStr = self.createPacket(jsonStr)
+        self.sendData(postStr)
+
+    def createJson(self):
+        timestamp = int(time.time() * 1000)
+        msg = {
+            "position": {
+            "value": 1,
+            "timestamp": timestamp,
+                "context": {
+                    "lat": self.lat,
+                    "lng": self.lng
+                }
+            },
+            "status": {
+                "value": self.status,
+                "timestamp": timestamp,
+                "context": {
+                    "lat": self.lat,
+                    "lng": self.lng
+                }
+            }
+        }
+        return json.dumps(msg)
+    
+    def createPacket(self, data):
+        DEVICE_LABEL = 'sb1'
+        USER_AGENT = 'RPI/3'
+        TOKEN = ''
+
+        postStr = "POST /api/v1.6/devices/{} HTTP/1.1\r\n".format(DEVICE_LABEL)
+        postStr += "Host: {}\r\n".format(self.HOST)
+        postStr += "User-Agent: {}\r\n".format(USER_AGENT)
+        postStr += "X-Auth-Token: {}\r\n".format(TOKEN)
+        postStr += "Content-Type: application/json\r\n"
+        postStr += "Content-Length: {}\r\n\r\n".format(len(data))
+        postStr += data + "\r\n"
+        return postStr
+
+    def sendData(self, msg):
+        try:
+            serverAddress = (self.HOST, self.PORT)
+            sendBuffer = msg.encode()
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect(serverAddress)
+            s.sendall(sendBuffer)
+            recvBuffer = s.recv(1024)
+            recv = recvBuffer.decode()
+            if '200 OK' in recv:
+                print('[INFO] Data uploaded to server.')
+            else:
+                print('[ERROR] Could not upload data to server.')
+                print(recv)
+        except Exception as e:
+            print('[ERROR] Server communication error.')
+            print(e)
 
     def close(self):
         print('[INFO] Closing application')

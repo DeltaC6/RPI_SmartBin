@@ -31,10 +31,10 @@ class SmartBin:
     SERIAL_BAUD = 115200
 
     LED_PIN = 21
-    TRIG_PIN = 16   // 36
-    ECHO_PIN = 20   // 38
+    TRIG_PIN = 16
+    ECHO_PIN = 20
 
-    BIN_DEPTH = 906t
+    BIN_DEPTH = 90
 
     def __init__(self):
         print('[INFO] Initializing components.')
